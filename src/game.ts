@@ -12,16 +12,25 @@ const ACCEL = 9;
 const BRAKE = 26;
 const DRAG = 0.6;
 const STEER_RATE = 2.1; // rad/s
-const BEST_KEY = "anargya-lap-best"; // + "-kart" / "-f1"
+const BEST_KEY = "anargya-best-its"; // + "-kart" / "-f1"
+const GHOST_KEY = "anargya-ghost-its"; // + "-kart" / "-f1"
+const GHOST_STEP = 50; // ms antar sampel rekaman ghost (20 Hz)
 
 // ================= Lintasan =================
-// Titik kontrol (meter). Bentuk bebas, bukan replika sirkuit ITS.
-const CONTROL: [number, number][] = [
-  [0, 0], [40, 0], [62, -6], [72, -24], [62, -42], [40, -46], [28, -60], [36, -80], [62, -86],
-  [86, -76], [100, -52], [104, -18], [96, 16], [74, 32], [46, 28], [20, 42], [-8, 38], [-24, 18], [-18, 4],
+// Sirkuit ITS, dijiplak dari citra satelit Google Maps (piksel tangkapan layar, utara = atas).
+// Urutan mengikuti arah balap: naik di lurusan kanan → putaran atas → turun di lurusan kiri →
+// tikungan S & hairpin di bawah → kembali ke lurusan kanan. Garis start ada di titik pertama.
+const MAP_PX: [number, number][] = [
+  [955, 655], [925, 580], [905, 515], [882, 445], [862, 370], [850, 300], [848, 255], [825, 225], [795, 218],
+  [762, 228], [742, 262], [752, 300], [775, 330], [810, 380], [838, 440], [852, 510], [862, 580], [862, 630],
+  [855, 710], [825, 770], [780, 830], [772, 870], [800, 885], [845, 850], [880, 800], [887, 745], [892, 687],
+  [910, 677], [920, 700], [927, 750], [957, 805], [960, 840], [925, 857], [870, 867], [855, 890], [870, 925],
+  [925, 932], [990, 930], [1012, 900], [1005, 840], [980, 745],
 ];
+const M_PER_PX = 0.45; // ±1 km per lap (sedikit diperkecil dari aslinya supaya 1 lap ±1 menit)
+const CONTROL = MAP_PX.map(([x, y]) => [(x - 880) * M_PER_PX, (y - 575) * M_PER_PX] as const);
 const curve = new THREE.CatmullRomCurve3(CONTROL.map(([x, z]) => new THREE.Vector3(x, 0, z)), true, "centripetal");
-const N = 900;
+const N = 1200;
 const pts = curve.getSpacedPoints(N).slice(0, N);
 const tangents = pts.map((_, i) => curve.getTangentAt(i / N));
 
@@ -34,7 +43,7 @@ renderer.shadowMap.enabled = true;
 const scene = new THREE.Scene();
 scene.background = new THREE.Color(0xa9d6f5);
 scene.fog = new THREE.Fog(0xa9d6f5, 60, 190);
-const camera = new THREE.PerspectiveCamera(62, 1, 0.1, 400);
+const camera = new THREE.PerspectiveCamera(62, 1, 0.3, 400);
 
 scene.add(new THREE.HemisphereLight(0xffffff, 0x4a6b3a, 1.3));
 const sun = new THREE.DirectionalLight(0xfff1d6, 2.4);
@@ -68,26 +77,28 @@ function ribbon(a: number, b: number, y: number, color: (i: number) => THREE.Col
   geo.setAttribute("color", new THREE.Float32BufferAttribute(col, 3));
   geo.setIndex(idx);
   geo.computeVertexNormals();
-  const mesh = new THREE.Mesh(geo, new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 0.95, side: THREE.DoubleSide }));
+  // polygonOffset: cegah z-fighting (berkedip) dengan rumput saat dilihat dari jauh
+  const mat = new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 0.95, side: THREE.DoubleSide, polygonOffset: true, polygonOffsetFactor: -1, polygonOffsetUnits: -4 * y * 100 });
+  const mesh = new THREE.Mesh(geo, mat);
   mesh.receiveShadow = true;
   scene.add(mesh);
 }
 const asphalt = new THREE.Color(0x2b2d30);
 const white = new THREE.Color(0xf4f4f4), red = new THREE.Color(0xd8322a), green = new THREE.Color(0x29d970);
 const half = TRACK_WIDTH / 2;
-ribbon(-half, half, 0.01, () => asphalt);
-ribbon(half - 0.3, half - 0.1, 0.02, () => white);
-ribbon(-half + 0.1, -half + 0.3, 0.02, () => white);
+ribbon(-half, half, 0.02, () => asphalt);
+ribbon(half - 0.3, half - 0.1, 0.04, () => white);
+ribbon(-half + 0.1, -half + 0.3, 0.04, () => white);
 // kerb merah-putih
-ribbon(half, half + 0.8, 0.015, (i) => (Math.floor(i / 6) % 2 ? red : white));
-ribbon(-half - 0.8, -half, 0.015, (i) => (Math.floor(i / 6) % 2 ? red : white));
+ribbon(half, half + 0.8, 0.03, (i) => (Math.floor(i / 6) % 2 ? red : white));
+ribbon(-half - 0.8, -half, 0.03, (i) => (Math.floor(i / 6) % 2 ? red : white));
 // garis start/finish (hijau Anargya)
 {
   const p = pts[0], t = tangents[0];
-  const line = new THREE.Mesh(new THREE.PlaneGeometry(1.2, TRACK_WIDTH), new THREE.MeshBasicMaterial({ color: green }));
+  const line = new THREE.Mesh(new THREE.PlaneGeometry(1.2, TRACK_WIDTH), new THREE.MeshBasicMaterial({ color: green, polygonOffset: true, polygonOffsetFactor: -2, polygonOffsetUnits: -20 }));
   line.rotation.x = -Math.PI / 2;
   line.rotation.z = Math.atan2(-t.z, t.x);
-  line.position.set(p.x, 0.03, p.z);
+  line.position.set(p.x, 0.05, p.z);
   scene.add(line);
 }
 
@@ -108,10 +119,12 @@ for (let i = 0; i < N; i += 18) {
 }
 const trunkMat = new THREE.MeshStandardMaterial({ color: 0x6b4a2f, flatShading: true });
 const leafMat = new THREE.MeshStandardMaterial({ color: 0x2f6b36, flatShading: true });
-for (let i = 0; i < 70; i++) {
-  const a = (i / 70) * Math.PI * 2;
-  const r = 120 + ((i * 37) % 40);
-  const x = 40 + Math.cos(a) * r, z = -24 + Math.sin(a) * r;
+const treeBox = new THREE.Box3().setFromPoints(pts);
+const treeC = treeBox.getCenter(new THREE.Vector3()), treeR = treeBox.getSize(new THREE.Vector3()).length() / 2 + 25;
+for (let i = 0; i < 90; i++) {
+  const a = (i / 90) * Math.PI * 2;
+  const r = treeR + ((i * 37) % 40);
+  const x = treeC.x + Math.cos(a) * r, z = treeC.z + Math.sin(a) * r;
   const h = 6 + ((i * 13) % 5);
   const trunk = new THREE.Mesh(new THREE.CylinderGeometry(0.3, 0.4, h * 0.4, 5), trunkMat);
   trunk.position.set(x, h * 0.2, z);
@@ -126,6 +139,53 @@ const vehicles: { kart: Vehicle; f1?: Vehicle } = { kart: kartVehicle() };
 let car: Vehicle = vehicles.kart;
 let carId: "kart" | "f1" = "kart";
 scene.add(car.group);
+
+// ================= Ghost car =================
+// Merekam posisi tiap 50 ms selama lap; lap terbaik disimpan di localStorage dan diputar ulang
+// sebagai kendaraan hijau transparan di lap berikutnya.
+type GhostData = { time: number; x: number[]; z: number[]; h: number[] };
+const ghostMat = new THREE.MeshBasicMaterial({ color: 0x29d970, transparent: true, opacity: 0.35, depthWrite: false });
+const ghosts: Partial<Record<"kart" | "f1", THREE.Object3D>> = {};
+let ghostData: GhostData | null = null;
+const rec = { x: [] as number[], z: [] as number[], h: [] as number[], next: 0 };
+
+function ghostFor(id: "kart" | "f1", source: THREE.Object3D) {
+  if (!ghosts[id]) {
+    const g = source.clone(true);
+    g.rotation.set(0, 0, 0); // clone menyalin rotasi lewat quaternion: bisa jadi (π, y, π), jadi nolkan
+    g.traverse((o) => {
+      const m = o as THREE.Mesh;
+      if (m.isMesh) { m.material = ghostMat; m.castShadow = false; m.receiveShadow = false; }
+    });
+    g.visible = false;
+    scene.add(g);
+    ghosts[id] = g;
+  }
+  return ghosts[id]!;
+}
+function readGhost(): GhostData | null {
+  try { return JSON.parse(localStorage.getItem(`${GHOST_KEY}-${carId}`) ?? "null"); } catch { return null; }
+}
+function saveGhost(time: number) {
+  const r = (a: number[]) => a.map((v) => Math.round(v * 100) / 100); // 2 desimal cukup, hemat ruang
+  const data: GhostData = { time, x: r(rec.x), z: r(rec.z), h: r(rec.h) };
+  try { localStorage.setItem(`${GHOST_KEY}-${carId}`, JSON.stringify(data)); } catch { /* storage penuh/tidak ada */ }
+}
+function resetRecording() {
+  rec.x = []; rec.z = []; rec.h = []; rec.next = 0;
+}
+function updateGhost(now: number) {
+  const g = ghosts[carId];
+  if (!g) return;
+  if (!state.running || !ghostData) { g.visible = false; return; }
+  const f = (now - state.lapStart) / GHOST_STEP;
+  const i = Math.floor(f), k = f - i, last = ghostData.x.length - 1;
+  if (i >= last) { g.visible = false; return; } // ghost sudah finish
+  const lerp = (a: number[]) => a[i] + (a[i + 1] - a[i]) * k;
+  g.position.set(lerp(ghostData.x), 0, lerp(ghostData.z));
+  g.rotation.set(0, lerp(ghostData.h), 0); // set ketiga sumbu, jangan hanya y
+  g.visible = true;
+}
 
 const state = {
   pos: new THREE.Vector3(),
@@ -236,6 +296,13 @@ function drawMinimap() {
   pts.forEach((p, i) => (i ? mctx.lineTo(mmX(p.x), mmY(p.z)) : mctx.moveTo(mmX(p.x), mmY(p.z))));
   mctx.closePath();
   mctx.stroke();
+  const g = ghosts[carId];
+  if (g?.visible) {
+    mctx.fillStyle = "rgba(41,217,112,.45)"; // ghost
+    mctx.beginPath();
+    mctx.arc(mmX(g.position.x), mmY(g.position.z), 4, 0, Math.PI * 2);
+    mctx.fill();
+  }
   mctx.fillStyle = "#29D970";
   mctx.beginPath();
   mctx.arc(mmX(state.pos.x), mmY(state.pos.z), 5, 0, Math.PI * 2);
@@ -249,6 +316,9 @@ function startCountdown() {
   screenStart.hidden = true;
   screenFinish.hidden = true;
   reset();
+  ghostData = readGhost();
+  ghostFor(carId, car.group);
+  resetRecording();
   hud.hidden = false;
   touch.hidden = !isTouch;
   countdownEl.hidden = false;
@@ -306,6 +376,7 @@ document.querySelectorAll<HTMLButtonElement>("[data-car]").forEach((btn) =>
       startBtn.disabled = false;
     }
     scene.remove(car.group);
+    if (ghosts[carId]) ghosts[carId]!.visible = false;
     carId = id;
     car = vehicles[id]!;
     scene.add(car.group);
@@ -358,11 +429,24 @@ function step(dt: number, now: number) {
     if (state.idx > N * 0.3 && state.idx < N * 0.4) state.cp1 = true;
     if (state.idx > N * 0.63 && state.idx < N * 0.73) state.cp2 = true;
     if (prev > N * 0.9 && state.idx < N * 0.1 && state.cp1 && state.cp2) {
-      state.laps.push(now - state.lapStart);
+      const lapTime = now - state.lapStart;
+      state.laps.push(lapTime);
+      if (!ghostData || lapTime < ghostData.time) {
+        saveGhost(lapTime);
+        ghostData = readGhost();
+      }
+      resetRecording();
       state.lapStart = now;
       state.cp1 = state.cp2 = false;
       state.lap++;
       if (state.lap > LAPS) finish(now);
+    }
+  }
+  // rekam posisi untuk ghost (20 Hz)
+  if (state.running) {
+    while (now - state.lapStart >= rec.next) {
+      rec.x.push(state.pos.x); rec.z.push(state.pos.z); rec.h.push(state.heading);
+      rec.next += GHOST_STEP;
     }
   }
   warn.hidden = !(control && offTrack);
@@ -402,6 +486,7 @@ renderer.setAnimationLoop((now) => {
   step(dt, now);
   placeKart();
   car.animate(state.speed, state.steer, dt); // steer positif = kiri: roda & setir ikut ke kiri
+  updateGhost(now);
 
   cameraTarget();
   camera.position.lerp(camPos, Math.min(1, dt * 5));
@@ -415,4 +500,4 @@ renderer.setAnimationLoop((now) => {
 });
 
 // Hanya saat development: akses untuk pengujian otomatis
-if (import.meta.env.DEV) Object.assign(window, { __game: { state, pts, N } });
+if (import.meta.env.DEV) Object.assign(window, { __game: { state, pts, N, ghosts, camera, renderer, scene } });
