@@ -1,0 +1,135 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Anargya EV Kart — ITS</title>
+    <meta name="description" content="Anargya ITS EV Team's electric kart in 3D, plus a mini lap game." />
+    <link rel="icon" href="/img/logo.png" />
+    <script>
+      // Loading screen hanya sekali per sesi browser
+      try { if (sessionStorage.getItem("anargya-loaded")) document.documentElement.classList.add("no-loader"); } catch (e) {}
+    </script>
+    <style>
+      /* CSS kritis loading screen: inline supaya tampil sebelum CSS utama dimuat */
+      .loader { position: fixed; inset: 0; z-index: 100; display: grid; place-items: center; background: #050605; color: #fff; font-family: Inter, system-ui, sans-serif; transition: opacity 0.5s ease; }
+      .loader.is-done { opacity: 0; pointer-events: none; }
+      .no-loader .loader { display: none; }
+      .loader__gauge { width: min(72vw, 340px); height: auto; overflow: visible; opacity: 0; transition: opacity 0.2s; }
+      .loader__gauge.is-ready { opacity: 1; }
+      .loader__value { font-size: 40px; font-weight: 900; font-variant-numeric: tabular-nums; }
+      .loader__unit { font-size: 9px; letter-spacing: 0.2em; fill: #29d970; font-family: "Roboto Mono", ui-monospace, monospace; }
+      .loader__label { margin-top: 8px; font: 500 12px "Roboto Mono", ui-monospace, monospace; letter-spacing: 0.24em; color: rgba(255, 255, 255, 0.6); text-align: center; }
+    </style>
+    <script type="module" src="/src/loader.ts"></script>
+  </head>
+  <body>
+    <!-- Loading screen: speedometer 0–100 -->
+    <div class="loader" id="loader" role="progressbar" aria-label="Loading" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0">
+      <div>
+        <svg class="loader__gauge" id="loader-gauge" viewBox="0 0 200 200" aria-hidden="true">
+          <g id="loader-ticks"></g>
+          <g id="loader-labels" font-size="8" fill="rgba(255,255,255,.5)" text-anchor="middle"></g>
+          <line id="loader-needle" x1="100" y1="100" x2="160" y2="100" stroke="#f26a1b" stroke-width="3" stroke-linecap="round" transform="rotate(-225 100 100)" />
+          <circle cx="100" cy="100" r="7" fill="#f26a1b" />
+          <circle cx="100" cy="100" r="3" fill="#050605" />
+          <text x="100" y="156" text-anchor="middle" fill="#fff" class="loader__value" id="loader-value">0</text>
+          <text x="100" y="170" text-anchor="middle" class="loader__unit">KM/H</text>
+        </svg>
+        <p class="loader__label">STARTING THE MOTOR</p>
+      </div>
+    </div>
+
+    <header class="nav">
+      <a href="#top" class="nav__logo"><img src="/img/logo.png" alt="Anargya" /></a>
+      <nav class="nav__links">
+        <a href="#about">About</a>
+        <a href="#inside">Inside</a>
+        <a href="#gallery">Gallery</a>
+      </nav>
+      <a href="/game.html" class="btn btn--small">Play</a>
+    </header>
+
+    <main id="top">
+      <!-- ================= HERO ================= -->
+      <section class="hero">
+        <div class="hero__text">
+          <p class="eyebrow">ANARGYA ITS EV TEAM</p>
+          <h1>Built to run<br /><span>electric.</span></h1>
+          <p class="hero__lead">Our electric kart from the ITS circuit, rebuilt in low-poly 3D. Spin it around, then take it out for three laps.</p>
+          <div class="hero__cta">
+            <a href="/game.html" class="btn">Play the Lap</a>
+            <a href="#inside" class="btn btn--ghost">Inside the Kart</a>
+          </div>
+        </div>
+        <div class="hero__stage">
+          <canvas id="kart-canvas" aria-label="3D model of the Anargya electric kart, rotating"></canvas>
+          <p class="hero__hint">Drag to rotate</p>
+        </div>
+      </section>
+
+      <!-- ================= ABOUT ================= -->
+      <section id="about" class="section about">
+        <p class="eyebrow">ABOUT US</p>
+        <h2>EV research team from Institut Teknologi Sepuluh Nopember.</h2>
+        <p class="about__body">
+          Anargya builds and races electric vehicles, from the frame to the battery and controller. This kart is
+          where we test it all: every lap at the ITS circuit tells us what to improve next.
+        </p>
+      </section>
+
+      <!-- ================= INSIDE ================= -->
+      <!-- Teks komponen berdasarkan yang terlihat di foto. Sesuaikan dengan data tim jika perlu. -->
+      <section id="inside" class="section">
+        <p class="eyebrow">INSIDE THE KART</p>
+        <h2>What you see on the 3D model.</h2>
+        <ul class="parts">
+          <li class="part">
+            <img src="/img/cockpit.webp" alt="Rear of the kart with the electrical box and radiator" loading="lazy" />
+            <h3>Electrical box</h3>
+            <p>The white box behind the seat, carrying the elektro-ITS logo and the big red emergency stop button.</p>
+          </li>
+          <li class="part">
+            <img src="/img/top.webp" alt="Kart seen from behind and above" loading="lazy" />
+            <h3>Cooling</h3>
+            <p>A radiator with a fan at the rear right, fed by the bright green coolant lines.</p>
+          </li>
+          <li class="part">
+            <img src="/img/side.webp" alt="Driver seated in the kart, side view" loading="lazy" />
+            <h3>Aluminium side box</h3>
+            <p>Mounted next to the driver on the left side, low and close to the centre of the kart.</p>
+          </li>
+          <li class="part">
+            <img src="/img/front.webp" alt="Kart driving toward the camera" loading="lazy" />
+            <h3>Cockpit</h3>
+            <p>Red steering wheel with a small display, behind an orange-and-black front fairing.</p>
+          </li>
+        </ul>
+      </section>
+
+      <!-- ================= GALLERY ================= -->
+      <section id="gallery" class="section">
+        <p class="eyebrow">FROM THE TRACK</p>
+        <h2>ITS circuit, 31 October 2026.</h2>
+        <div class="gallery">
+          <img src="/img/side.webp" alt="Kart on track, side view" loading="lazy" />
+          <img src="/img/rear.webp" alt="Kart from behind" loading="lazy" />
+          <img src="/img/pit.webp" alt="Team preparing the kart" loading="lazy" />
+          <img src="/img/cockpit.webp" alt="Rear of the kart with the driver seated" loading="lazy" />
+        </div>
+      </section>
+
+      <!-- ================= CTA ================= -->
+      <section class="section cta">
+        <h2>Think you can beat our lap?</h2>
+        <a href="/game.html" class="btn">Start the Race</a>
+      </section>
+    </main>
+
+    <footer class="footer">
+      <p>Anargya ITS EV Team · Institut Teknologi Sepuluh Nopember, Surabaya</p>
+    </footer>
+
+    <script type="module" src="/src/main.ts"></script>
+  </body>
+</html>

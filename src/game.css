@@ -1,0 +1,89 @@
+body.game { overflow: hidden; height: 100svh; user-select: none; -webkit-user-select: none; }
+#game-canvas { position: fixed; inset: 0; width: 100%; height: 100%; display: block; }
+
+/* ---------- HUD ---------- */
+.hud { position: fixed; inset: 0; pointer-events: none; font-family: "Roboto Mono", monospace; }
+.hud__home {
+  pointer-events: auto; position: absolute; top: 16px; left: 16px; width: 44px; height: 44px;
+  display: grid; place-items: center; border-radius: 12px; background: rgba(0, 0, 0, 0.6); font-size: 20px;
+}
+.hud__box {
+  position: absolute; top: 16px; padding: 8px 14px; border-radius: 12px; background: rgba(0, 0, 0, 0.6);
+  display: flex; flex-direction: column; min-width: 96px;
+}
+.hud__box span { font-size: 11px; letter-spacing: 0.14em; color: var(--brand); }
+.hud__box b { font-size: 22px; font-weight: 500; font-variant-numeric: tabular-nums; }
+.hud__box:nth-of-type(1) { left: 72px; }
+.hud__box:nth-of-type(2) { left: 184px; min-width: 128px; }
+.hud__box:nth-of-type(3) { left: 328px; min-width: 128px; }
+#minimap { position: absolute; top: 16px; right: 16px; width: 160px; height: 120px; border-radius: 12px; background: rgba(0, 0, 0, 0.6); }
+.hud__speed { position: absolute; right: 24px; bottom: 24px; text-align: right; }
+.hud__speed b { display: block; font-size: 56px; line-height: 1; font-weight: 500; font-variant-numeric: tabular-nums; }
+.hud__speed span { color: var(--brand); letter-spacing: 0.14em; font-size: 13px; }
+.hud__warn {
+  position: absolute; top: 96px; left: 50%; transform: translateX(-50%); padding: 6px 14px; border-radius: 8px;
+  background: var(--orange); color: #000; font-weight: 500; letter-spacing: 0.12em;
+}
+
+.countdown {
+  position: fixed; inset: 0; display: grid; place-items: center; pointer-events: none;
+  font-size: clamp(96px, 20vw, 200px); font-weight: 900; color: var(--brand); text-shadow: 0 6px 40px rgba(0, 0, 0, 0.6);
+}
+
+/* ---------- Screens ---------- */
+.screen {
+  position: fixed; inset: 0; z-index: 10; display: flex; flex-direction: column; align-items: center; justify-content: center;
+  gap: 16px; padding: 24px; text-align: center; background: rgba(5, 6, 5, 0.82); backdrop-filter: blur(6px);
+}
+.screen[hidden] { display: none; }
+.screen h1 { font-size: clamp(40px, 8vw, 72px); }
+.screen p { max-width: 44ch; color: var(--muted); }
+.screen__logo { height: 40px; width: auto; }
+.screen__back { color: var(--muted); font-size: 15px; text-decoration: underline; }
+.keys { list-style: none; padding: 0; display: flex; flex-wrap: wrap; justify-content: center; gap: 8px 20px; color: var(--muted); font-size: 15px; }
+kbd {
+  display: inline-block; min-width: 26px; padding: 2px 6px; border-radius: 6px; border: 1px solid rgba(255, 255, 255, 0.3);
+  font-family: "Roboto Mono", monospace; font-size: 13px; color: var(--text); text-align: center;
+}
+.screen__touch { display: none; }
+.laps { list-style: none; padding: 0; font-family: "Roboto Mono", monospace; color: var(--muted); }
+.laps li.best { color: var(--brand); }
+.btn { border: 0; cursor: pointer; font-family: inherit; }
+
+/* ---------- Touch ---------- */
+.touch { position: fixed; left: 0; right: 0; bottom: 16px; display: flex; justify-content: space-between; padding: 0 16px; pointer-events: none; }
+.touch[hidden] { display: none; }
+.touch__group { display: flex; gap: 12px; }
+.touch button {
+  pointer-events: auto; width: 72px; height: 72px; border-radius: 50%; border: 1px solid rgba(255, 255, 255, 0.3);
+  background: rgba(0, 0, 0, 0.5); color: #fff; font-size: 24px; touch-action: none;
+}
+.touch button.is-down { background: rgba(41, 217, 112, 0.5); }
+.touch .touch__gas { background: rgba(41, 217, 112, 0.35); }
+
+@media (pointer: coarse) {
+  .keys { display: none; }
+  .screen__touch { display: block; }
+}
+.touch-mode .hud__speed { bottom: 112px; }
+@media (max-width: 640px) {
+  .hud__box { min-width: 0 !important; padding: 6px 10px; }
+  .hud__box b { font-size: 16px; }
+  .hud__box:nth-of-type(1) { left: 68px; }
+  .hud__box:nth-of-type(2) { left: 140px; }
+  .hud__box:nth-of-type(3) { left: 68px; top: 70px; }
+  #minimap { width: 112px; height: 84px; }
+  .hud__speed b { font-size: 40px; }
+  .hud__warn { top: 132px; }
+}
+
+/* ---------- Pilih kendaraan ---------- */
+.cars { display: flex; flex-wrap: wrap; justify-content: center; gap: 10px; }
+.cars button {
+  padding: 10px 16px; border-radius: 10px; border: 1px solid rgba(255, 255, 255, 0.3); background: transparent;
+  color: var(--text); font: 600 15px Inter, sans-serif; cursor: pointer;
+}
+.cars button small { color: var(--muted); font-weight: 400; }
+.cars button[aria-pressed="true"] { border-color: var(--brand); background: rgba(41, 217, 112, 0.15); }
+.car-error { color: var(--orange) !important; }
+.btn:disabled { opacity: 0.6; cursor: wait; }
